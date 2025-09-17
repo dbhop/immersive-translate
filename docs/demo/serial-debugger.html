@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>网页端串口调试助手 - Immersive Translate</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f8fafc;
+        --card-bg: rgba(255, 255, 255, 0.95);
+        --border: #e2e8f0;
+        --text: #0f172a;
+        --muted: #64748b;
+        --accent: #2563eb;
+        --accent-soft: rgba(37, 99, 235, 0.1);
+        --success: #16a34a;
+        --success-soft: rgba(22, 163, 74, 0.12);
+        --danger: #dc2626;
+        --danger-soft: rgba(220, 38, 38, 0.12);
+        --warning: #d97706;
+        --warning-soft: rgba(217, 119, 6, 0.12);
+        --mono-font: "Fira Code", "SFMono-Regular", Consolas, "Liberation Mono",
+          Menlo, Courier, monospace;
+        --radius-lg: 18px;
+        --radius-md: 12px;
+        --radius-sm: 8px;
+        --shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.1);
+        --shadow-inset: inset 0 0 0 1px rgba(148, 163, 184, 0.18);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f172a;
+          --card-bg: rgba(15, 23, 42, 0.92);
+          --border: #1e293b;
+          --text: #e2e8f0;
+          --muted: #94a3b8;
+          --accent: #60a5fa;
+          --accent-soft: rgba(96, 165, 250, 0.16);
+          --success: #34d399;
+          --success-soft: rgba(52, 211, 153, 0.14);
+          --danger: #f87171;
+          --danger-soft: rgba(248, 113, 113, 0.14);
+          --warning: #fbbf24;
+          --warning-soft: rgba(251, 191, 36, 0.16);
+          --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.65);
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Inter", "PingFang SC", "Microsoft Yahei", system-ui,
+          -apple-system, sans-serif;
+        background: radial-gradient(circle at top, rgba(37, 99, 235, 0.08), transparent 55%),
+          var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 32px 24px 48px;
+      }
+
+      header {
+        background: var(--card-bg);
+        border-radius: var(--radius-lg);
+        padding: 32px;
+        box-shadow: var(--shadow-soft);
+        border: 1px solid var(--border);
+        margin-bottom: 28px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      header::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          135deg,
+          rgba(37, 99, 235, 0.12),
+          transparent 40%,
+          rgba(37, 99, 235, 0.08)
+        );
+        pointer-events: none;
+      }
+
+      h1 {
+        margin-top: 0;
+        margin-bottom: 12px;
+        font-size: clamp(26px, 4vw, 34px);
+      }
+
+      .lead {
+        margin: 0 0 16px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        border-radius: 999px;
+        padding: 10px 18px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+
+      .warning {
+        margin-top: 18px;
+        padding: 16px 18px;
+        border-radius: var(--radius-md);
+        background: var(--warning-soft);
+        color: var(--warning);
+        border: 1px solid rgba(217, 119, 6, 0.24);
+        display: none;
+      }
+
+      .grid {
+        display: grid;
+        gap: 22px;
+      }
+
+      .card {
+        background: var(--card-bg);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-soft);
+        padding: 24px 26px;
+      }
+
+      .card h2 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 20px;
+      }
+
+      .card section h2 {
+        margin-bottom: 16px;
+      }
+
+      .controls-grid {
+        display: grid;
+        gap: 20px;
+      }
+
+      @media (min-width: 840px) {
+        .controls-grid {
+          grid-template-columns: 1.15fr 1fr;
+        }
+      }
+
+      .status-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-weight: 600;
+        border: 1px solid transparent;
+        letter-spacing: 0.01em;
+      }
+
+      .status-connected {
+        background: var(--success-soft);
+        color: var(--success);
+        border-color: rgba(22, 163, 74, 0.25);
+      }
+
+      .status-disconnected {
+        background: rgba(100, 116, 139, 0.12);
+        color: var(--muted);
+        border-color: rgba(100, 116, 139, 0.18);
+      }
+
+      .status-error {
+        background: var(--danger-soft);
+        color: var(--danger);
+        border-color: rgba(220, 38, 38, 0.25);
+      }
+
+      .inline-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      button,
+      select,
+      textarea,
+      input[type="text"] {
+        font: inherit;
+      }
+
+      button {
+        appearance: none;
+        border: none;
+        border-radius: var(--radius-sm);
+        padding: 10px 18px;
+        background: var(--text);
+        color: var(--bg);
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease,
+          background 0.2s ease;
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+      }
+
+      button.secondary {
+        background: rgba(15, 23, 42, 0.08);
+        color: var(--text);
+        box-shadow: none;
+      }
+
+      button.ghost {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--muted);
+        box-shadow: none;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+        transform: none;
+        box-shadow: none;
+      }
+
+      button:not(:disabled):active {
+        transform: translateY(1px);
+      }
+
+      button:not(:disabled):hover {
+        filter: brightness(1.03);
+      }
+
+      select,
+      textarea,
+      input[type="text"] {
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        padding: 10px 12px;
+        background: rgba(148, 163, 184, 0.04);
+        color: inherit;
+      }
+
+      select:focus,
+      textarea:focus,
+      input[type="text"]:focus,
+      button:focus-visible {
+        outline: 2px solid rgba(37, 99, 235, 0.28);
+        outline-offset: 1px;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 110px;
+        resize: vertical;
+      }
+
+      .field-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 140px;
+        flex: 1;
+      }
+
+      .field label {
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--muted);
+        letter-spacing: 0.02em;
+      }
+
+      .options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 20px;
+        align-items: center;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .options label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+      }
+
+      .log-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      .log {
+        height: min(420px, 48vh);
+        overflow-y: auto;
+        border-radius: var(--radius-md);
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 16px 18px;
+        font-family: var(--mono-font);
+        font-size: 13px;
+        line-height: 1.6;
+        box-shadow: var(--shadow-inset);
+      }
+
+      .log-entry {
+        padding: 6px 10px;
+        border-radius: 8px;
+        margin-bottom: 6px;
+        display: block;
+        word-break: break-all;
+        white-space: pre-wrap;
+      }
+
+      .log-entry:last-child {
+        margin-bottom: 0;
+      }
+
+      .log-rx {
+        background: rgba(59, 130, 246, 0.16);
+        color: #bfdbfe;
+      }
+
+      .log-tx {
+        background: rgba(16, 185, 129, 0.2);
+        color: #d1fae5;
+      }
+
+      .log-system {
+        background: rgba(148, 163, 184, 0.14);
+        color: #e2e8f0;
+      }
+
+      .log-error {
+        background: rgba(248, 113, 113, 0.2);
+        color: #fecaca;
+      }
+
+      footer {
+        margin-top: 36px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      code {
+        font-family: var(--mono-font);
+        background: rgba(148, 163, 184, 0.12);
+        padding: 2px 6px;
+        border-radius: 6px;
+      }
+
+      @media (max-width: 600px) {
+        header,
+        .card {
+          padding: 22px;
+        }
+
+        .log {
+          height: 320px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="pill">Web Serial API · Browser Serial Console</div>
+        <h1>网页端串口调试助手</h1>
+        <p class="lead">
+          借助浏览器提供的 Web Serial API，您可以在无需安装任何桌面工具的情況下与串口设备通讯。使用下方工具选择串口、设置参数、发送与接收数据，并将调试过程记录下来。
+        </p>
+        <div class="warning" id="support-warning">
+          您的浏览器暂不支持 Web Serial API。请在最新版的 Chromium/Chrome、Edge 或其他支持 Web Serial 的浏览器中打开本页面，并确保使用 HTTPS。
+        </div>
+      </header>
+
+      <div class="grid">
+        <div class="card">
+          <div class="status-bar">
+            <span class="status-pill status-disconnected" id="status-indicator"
+              >未连接</span
+            >
+            <div class="inline-buttons">
+              <button id="request-port">选择串口</button>
+              <button id="connect" disabled>连接</button>
+              <button id="disconnect" class="secondary" disabled>断开</button>
+            </div>
+          </div>
+
+          <div class="controls-grid">
+            <section>
+              <h2>串口参数</h2>
+              <div class="field-group">
+                <div class="field">
+                  <label for="baudrate">波特率</label>
+                  <select id="baudrate">
+                    <option value="9600">9600</option>
+                    <option value="14400">14400</option>
+                    <option value="19200">19200</option>
+                    <option value="28800">28800</option>
+                    <option value="38400">38400</option>
+                    <option value="57600">57600</option>
+                    <option value="74880">74880</option>
+                    <option value="115200" selected>115200</option>
+                    <option value="230400">230400</option>
+                    <option value="460800">460800</option>
+                    <option value="921600">921600</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="data-bits">数据位</label>
+                  <select id="data-bits">
+                    <option value="8" selected>8</option>
+                    <option value="7">7</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="stop-bits">停止位</label>
+                  <select id="stop-bits">
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="parity">校验位</label>
+                  <select id="parity">
+                    <option value="none" selected>无</option>
+                    <option value="even">偶校验</option>
+                    <option value="odd">奇校验</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="flow-control">流控</label>
+                  <select id="flow-control">
+                    <option value="none" selected>无</option>
+                    <option value="hardware">硬件 (RTS/CTS)</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h2>显示 / 行为</h2>
+              <div class="options">
+                <label>
+                  <input type="checkbox" id="timestamp" checked />
+                  显示时间戳
+                </label>
+                <label>
+                  <input type="checkbox" id="autoscroll" checked />
+                  自动滚动
+                </label>
+                <label>
+                  <input type="checkbox" id="hex-display" />
+                  接收数据以十六进制显示
+                </label>
+                <label>
+                  <input type="checkbox" id="preserve-log" checked />
+                  保留历史记录 (最多 5000 行)
+                </label>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div class="card">
+          <section>
+            <h2>发送数据</h2>
+            <textarea
+              id="send-data"
+              placeholder="在此输入要发送的数据，支持多行输入"
+            ></textarea>
+            <div class="options" style="margin-top: 12px">
+              <label>
+                <span>结尾符：</span>
+                <select id="line-ending">
+                  <option value="none">无</option>
+                  <option value="\n" selected>\n (LF)</option>
+                  <option value="\r\n">\r\n (CRLF)</option>
+                  <option value="\r">\r (CR)</option>
+                </select>
+              </label>
+              <label>
+                <input type="checkbox" id="send-hex" /> 按十六进制发送
+              </label>
+            </div>
+            <div class="inline-buttons" style="margin-top: 14px">
+              <button id="send-button" disabled>发送</button>
+              <button id="clear-send" type="button" class="ghost">
+                清空输入
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <div class="card">
+          <section>
+            <h2>接收数据</h2>
+            <div class="log-toolbar">
+              <button id="clear-log" type="button" class="ghost">
+                清空日志
+              </button>
+              <button id="save-log" type="button" class="secondary">
+                导出日志
+              </button>
+            </div>
+            <div id="log" class="log" aria-live="polite"></div>
+          </section>
+        </div>
+      </div>
+
+      <footer>
+        提示：Web Serial API 需要通过 HTTPS 访问，并且仅在支持的浏览器中生效。
+        本工具不会上传任何串口数据，所有操作均在本地浏览器中完成。
+      </footer>
+    </div>
+
+    <script>
+      (function () {
+        const warning = document.getElementById("support-warning");
+        const requestButton = document.getElementById("request-port");
+        const connectButton = document.getElementById("connect");
+        const disconnectButton = document.getElementById("disconnect");
+        const statusIndicator = document.getElementById("status-indicator");
+        const baudrateSelect = document.getElementById("baudrate");
+        const databitsSelect = document.getElementById("data-bits");
+        const stopbitsSelect = document.getElementById("stop-bits");
+        const paritySelect = document.getElementById("parity");
+        const flowControlSelect = document.getElementById("flow-control");
+        const timestampCheckbox = document.getElementById("timestamp");
+        const autoscrollCheckbox = document.getElementById("autoscroll");
+        const hexDisplayCheckbox = document.getElementById("hex-display");
+        const preserveCheckbox = document.getElementById("preserve-log");
+        const logContainer = document.getElementById("log");
+        const sendButton = document.getElementById("send-button");
+        const sendTextarea = document.getElementById("send-data");
+        const clearSendButton = document.getElementById("clear-send");
+        const lineEndingSelect = document.getElementById("line-ending");
+        const sendHexCheckbox = document.getElementById("send-hex");
+        const clearLogButton = document.getElementById("clear-log");
+        const saveLogButton = document.getElementById("save-log");
+
+        const encoder = new TextEncoder();
+        const decoder = new TextDecoder();
+        let port = null;
+        let reader = null;
+        let keepReading = false;
+        let connected = false;
+        const logBuffer = [];
+        const MAX_LOG_LINES = 5000;
+
+        if (!("serial" in navigator)) {
+          warning.style.display = "block";
+          requestButton.disabled = true;
+          connectButton.disabled = true;
+          disconnectButton.disabled = true;
+          sendButton.disabled = true;
+          return;
+        }
+
+        warning.style.display = "none";
+
+        function formatTimestamp() {
+          const now = new Date();
+          const hours = String(now.getHours()).padStart(2, "0");
+          const minutes = String(now.getMinutes()).padStart(2, "0");
+          const seconds = String(now.getSeconds()).padStart(2, "0");
+          const ms = String(now.getMilliseconds()).padStart(3, "0");
+          return `${hours}:${minutes}:${seconds}.${ms}`;
+        }
+
+        function describePort(targetPort) {
+          if (!targetPort) return "";
+          const info = targetPort.getInfo();
+          const parts = [];
+          if (info.usbVendorId) {
+            parts.push(`VID 0x${info.usbVendorId.toString(16).padStart(4, "0")}`);
+          }
+          if (info.usbProductId) {
+            parts.push(`PID 0x${info.usbProductId.toString(16).padStart(4, "0")}`);
+          }
+          return parts.length ? parts.join(" · ") : "串口设备";
+        }
+
+        function setStatus(type, message) {
+          statusIndicator.textContent = message;
+          statusIndicator.classList.remove(
+            "status-connected",
+            "status-disconnected",
+            "status-error"
+          );
+          if (type === "connected") {
+            statusIndicator.classList.add("status-connected");
+          } else if (type === "error") {
+            statusIndicator.classList.add("status-error");
+          } else {
+            statusIndicator.classList.add("status-disconnected");
+          }
+        }
+
+        function scrollLogToBottom() {
+          if (autoscrollCheckbox.checked) {
+            requestAnimationFrame(() => {
+              logContainer.scrollTop = logContainer.scrollHeight;
+            });
+          }
+        }
+
+        function appendLog(type, message) {
+          if (!message && type !== "system") return;
+          const entry = document.createElement("div");
+          entry.className = `log-entry log-${type}`;
+          const prefix = timestampCheckbox.checked
+            ? `[${formatTimestamp()}] `
+            : "";
+          entry.textContent = `${prefix}${message}`;
+          logContainer.appendChild(entry);
+
+          if (preserveCheckbox.checked) {
+            logBuffer.push(entry.textContent);
+            if (logBuffer.length > MAX_LOG_LINES) {
+              logBuffer.splice(0, logBuffer.length - MAX_LOG_LINES);
+              while (logContainer.children.length > MAX_LOG_LINES) {
+                logContainer.removeChild(logContainer.firstChild);
+              }
+            }
+          } else {
+            logBuffer.length = 0;
+            if (logContainer.children.length > 1200) {
+              logContainer.removeChild(logContainer.firstChild);
+            }
+          }
+
+          scrollLogToBottom();
+        }
+
+        function clearLog() {
+          logContainer.innerHTML = "";
+          logBuffer.length = 0;
+        }
+
+        function arrayToHex(value) {
+          return Array.from(value)
+            .map((byte) => byte.toString(16).padStart(2, "0"))
+            .join(" ");
+        }
+
+        async function closePort(showMessage = true) {
+          keepReading = false;
+          if (reader) {
+            try {
+              await reader.cancel();
+            } catch (error) {
+              console.debug("取消读取时出错", error);
+            }
+            try {
+              reader.releaseLock();
+            } catch (error) {
+              console.debug("释放读取锁失败", error);
+            }
+            reader = null;
+          }
+
+          if (port) {
+            try {
+              await port.close();
+            } catch (error) {
+              console.debug("关闭串口失败", error);
+            }
+          }
+
+          connected = false;
+          connectButton.disabled = !port;
+          disconnectButton.disabled = true;
+          sendButton.disabled = true;
+          if (showMessage) {
+            appendLog("system", "串口连接已断开。");
+          }
+          setStatus("disconnected", "未连接");
+        }
+
+        async function startReading() {
+          if (!port || !port.readable) return;
+          keepReading = true;
+          const readerInstance = port.readable.getReader();
+          reader = readerInstance;
+          try {
+            while (keepReading) {
+              const { value, done } = await readerInstance.read();
+              if (done) {
+                break;
+              }
+              if (value) {
+                if (hexDisplayCheckbox.checked) {
+                  appendLog("rx", arrayToHex(value));
+                } else {
+                  const text = decoder.decode(value, { stream: true });
+                  if (text) {
+                    appendLog("rx", text);
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            if (keepReading) {
+              appendLog("error", `读取串口数据失败：${error.message || error}`);
+              setStatus("error", "读取失败");
+            }
+          } finally {
+            try {
+              readerInstance.releaseLock();
+            } catch (error) {
+              console.debug("释放 reader 失败", error);
+            }
+            if (connected) {
+              await closePort(false);
+            }
+          }
+        }
+
+        requestButton.addEventListener("click", async () => {
+          try {
+            const selectedPort = await navigator.serial.requestPort();
+            port = selectedPort;
+            appendLog(
+              "system",
+              `已选择 ${describePort(port)}，请点击“连接”打开串口。`
+            );
+            connectButton.disabled = false;
+            setStatus("disconnected", "已选择串口");
+          } catch (error) {
+            if (error.name === "NotFoundError") {
+              appendLog("system", "已取消串口选择。");
+            } else if (error.name !== "SecurityError") {
+              appendLog("error", `请求串口失败：${error.message || error}`);
+              setStatus("error", "请求失败");
+            }
+          }
+        });
+
+        connectButton.addEventListener("click", async () => {
+          if (!port) {
+            appendLog("system", "请先选择串口。");
+            return;
+          }
+          try {
+            const options = {
+              baudRate: Number(baudrateSelect.value),
+              dataBits: Number(databitsSelect.value),
+              stopBits: Number(stopbitsSelect.value),
+              parity: paritySelect.value,
+            };
+            if (flowControlSelect.value !== "none") {
+              options.flowControl = flowControlSelect.value;
+            }
+            await port.open(options);
+            connected = true;
+            appendLog(
+              "system",
+              `串口已连接：${describePort(port)} @ ${options.baudRate}bps`
+            );
+            setStatus("connected", "已连接");
+            connectButton.disabled = true;
+            disconnectButton.disabled = false;
+            sendButton.disabled = false;
+            startReading();
+          } catch (error) {
+            appendLog("error", `打开串口失败：${error.message || error}`);
+            setStatus("error", "连接失败");
+          }
+        });
+
+        disconnectButton.addEventListener("click", () => {
+          closePort(true);
+        });
+
+        async function sendText(data) {
+          if (!port || !port.writable) {
+            appendLog("system", "串口未连接，无法发送数据。");
+            return;
+          }
+          const writer = port.writable.getWriter();
+          try {
+            await writer.write(data);
+          } finally {
+            writer.releaseLock();
+          }
+        }
+
+        sendButton.addEventListener("click", async () => {
+          if (!connected) {
+            appendLog("system", "请先连接串口。");
+            return;
+          }
+          const raw = sendTextarea.value;
+          if (!raw.trim() && !sendHexCheckbox.checked) {
+            appendLog("system", "发送内容为空。");
+            return;
+          }
+          try {
+            if (sendHexCheckbox.checked) {
+              const parsed = raw
+                .replace(/[,，]/g, " ")
+                .replace(/0x/gi, "")
+                .trim();
+              if (!parsed) {
+                appendLog("system", "请输入要发送的十六进制数据。");
+                return;
+              }
+              const parts = parsed.split(/\s+/).filter(Boolean);
+              const bytes = new Uint8Array(parts.length);
+              for (let i = 0; i < parts.length; i += 1) {
+                const value = parseInt(parts[i], 16);
+                if (Number.isNaN(value) || value < 0 || value > 255) {
+                  appendLog(
+                    "error",
+                    `无效的十六进制数：${parts[i]}。请仅输入 00-FF 范围的数值。`
+                  );
+                  return;
+                }
+                bytes[i] = value;
+              }
+              await sendText(bytes);
+              appendLog("tx", arrayToHex(bytes));
+            } else {
+              let message = raw;
+              const ending = lineEndingSelect.value;
+              if (ending !== "none") {
+                message += ending.replace(/\\r/g, "\r").replace(/\\n/g, "\n");
+              }
+              const payload = encoder.encode(message);
+              await sendText(payload);
+              appendLog("tx", message);
+            }
+          } catch (error) {
+            appendLog("error", `发送数据失败：${error.message || error}`);
+            setStatus("error", "发送失败");
+          }
+        });
+
+        clearSendButton.addEventListener("click", () => {
+          sendTextarea.value = "";
+          sendTextarea.focus();
+        });
+
+        sendHexCheckbox.addEventListener("change", () => {
+          lineEndingSelect.disabled = sendHexCheckbox.checked;
+        });
+
+        clearLogButton.addEventListener("click", () => {
+          clearLog();
+        });
+
+        saveLogButton.addEventListener("click", () => {
+          if (!logBuffer.length) {
+            appendLog("system", "暂无可导出的日志。");
+            return;
+          }
+          const blob = new Blob([logBuffer.join("\n")], {
+            type: "text/plain;charset=utf-8",
+          });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          const timestamp = new Date()
+            .toISOString()
+            .replace(/[:.]/g, "-")
+            .replace(/T/, "_")
+            .replace(/Z/, "");
+          link.download = `serial-log-${timestamp}.txt`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          appendLog("system", "日志已导出。");
+        });
+
+        navigator.serial.addEventListener("connect", (event) => {
+          appendLog(
+            "system",
+            `检测到新的串口设备：${describePort(event.port)}。`
+          );
+        });
+
+        navigator.serial.addEventListener("disconnect", async (event) => {
+          const message = `串口设备已断开：${describePort(event.port)}。`;
+          appendLog("system", message);
+          if (port === event.port) {
+            await closePort(false);
+            port = null;
+            connectButton.disabled = true;
+            setStatus("disconnected", "设备已断开");
+          }
+        });
+
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden && connected) {
+            appendLog("system", "页面不可见，已保持连接。建议避免长时间最小化。");
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
